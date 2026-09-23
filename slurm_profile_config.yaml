@@ -1,0 +1,79 @@
+# EDIT the number of jobs you need to run, as well as your slurm account and extras (if needed)
+
+executor: slurm
+jobs: 10
+use-conda: true
+conda-cleanup-envs: true
+
+default-resources:
+  slurm_account: "account"
+  slurm_extra: "--mail-type=BEGIN,END,FAIL --mail-user=your@email.com"
+
+set-resources:
+  standardize_gtf:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 20000
+    runtime: "12h"
+  build_reference_file:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 20000
+    runtime: "12h"
+  trim_reads:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 20000
+    runtime: "24h"
+  map_reads:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 20
+    mem_mb: 70000
+    runtime: "1d"
+  sort_bams:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 20
+    mem_mb: 20000
+    runtime: "1d"
+  merge_bams:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 20
+    mem_mb: 20000
+    runtime: "1d"
+  run_geneExt:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 20000
+    runtime: "1d"
+  build_reference_file_geneExt:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 20000
+    runtime: "12h"
+  map_reads_geneExt:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 20
+    mem_mb: 70000
+    runtime: "1d"
+  force_pipseeker_cells:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 20
+    mem_mb: 20000
+    runtime: "12h"
+  update_matrices:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 20000
+    runtime: "1h"
+  

@@ -1,0 +1,39 @@
+# EDIT this config file with to the locations of your files
+# DO NOT CHANGE KEYS, but only their values
+
+# Illumina single cell libraries
+# add as many libraries as you want
+# the specified directory needs to contain files for R1 and R2
+# e.g. path/to/sample_1_reads/R1.fastq.gz, path/to/sample_1_reads/R2.fastq.gz
+libraries:
+  sample_1: "path/to/sample_1_reads" # this is a directory containing R1 and R2 fastq files
+  sample_2: "path/to/sample_2_reads" # this is a directory containing R1 and R2 fastq files
+  sample_3: "path/to/sample_3_reads" # this is a directory containing R1 and R2 fastq files
+
+# specify the PIPseq chemistry
+# default is "V"
+pipseq_chemistry: "V"
+
+# genome files
+# all single-cell libraries of the previous point will be mapped to this genome
+genome:
+  fasta: "path/to/genome_assembly.fasta"
+  gtf: "path/to/genome_annotation.gtf"
+  protein: "path/to/genome_annotated_proteins.fasta"
+  cds: "path/to/genome_annotated_cdss.fasta"
+
+# full path to some softwares
+# these softwares need to be run from local executables
+softwares:
+  geneExt: "/path/to/GeneExt/geneext.py"
+  pipseeker: "/path/to/pipseeker-v3.3.0-linux/pipseeker"
+
+
+# DO NOT EDIT any of the following
+# output folders:
+genome_ref: "01_genome_ref"
+trimmed_reads: "02_trimmed_reads"
+pipseeker_1st: "03_pipseeker_1st_round"
+geneExt_output: "04_genome_ref_geneExt"
+pipseeker_2nd: "05_pipseker_2nd_round"
+log_dir: "logs"
