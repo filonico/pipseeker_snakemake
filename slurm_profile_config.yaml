@@ -3,7 +3,6 @@
 executor: slurm
 jobs: 10
 use-conda: true
-conda-cleanup-envs: true
 
 default-resources:
   slurm_account: "account"

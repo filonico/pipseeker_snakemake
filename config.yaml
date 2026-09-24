@@ -16,6 +16,7 @@ pipseq_chemistry: "V"
 
 # genome files
 # all single-cell libraries of the previous point will be mapped to this genome
+# remove the 'protein' and 'cds' keys if you don't have them
 genome:
   fasta: "path/to/genome_assembly.fasta"
   gtf: "path/to/genome_annotation.gtf"
