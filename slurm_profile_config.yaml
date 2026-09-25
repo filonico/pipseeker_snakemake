@@ -1,12 +1,12 @@
 # EDIT the values below
 
 executor: slurm
-jobs: <NUMBER_OF_JOBS>
+jobs: 10 # EDIT WITH YOUR NUMBER_OF_JOBS
 use-conda: true
 
 default-resources:
-  slurm_account: "<YOUR_SLURM_ACCOUNT>"
-  slurm_extra: "--mail-type=BEGIN,END,FAIL --mail-user=<YOUR_EMAIL>"
+  slurm_account: "<YOUR_SLURM_ACCOUNT>" # EDIT WITH YOUR SLURM ACCOUNT
+  slurm_extra: "--mail-type=BEGIN,END,FAIL --mail-user=<YOUR_EMAIL>" # EDIT WITH YOUR EMAIL
 
 
 #-------------------------------------------------------------------------------------

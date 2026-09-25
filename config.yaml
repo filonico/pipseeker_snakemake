@@ -1,24 +1,22 @@
 # EDIT this config file with the locations of your files
 # DO NOT CHANGE KEYS, but only their values
 
-# Illumina single cell libraries
+# Directories containing Illumina single cell libraries
 # add as many libraries as you want
 # the specified directory needs to contain files for R1 and R2
 # e.g. path/to/sample_1_reads/R1.fastq.gz, path/to/sample_1_reads/R2.fastq.gz
+# NB: library keys do not need to match the directory name
 libraries:
-  sample_1: "/PATH/TO/SAMPLE_1_READS" # this is a directory containing R1 and R2 fastq files
-  sample_2: "/PATH/TO/SAMPLE_2_READS" # this is a directory containing R1 and R2 fastq files
-  sample_3: "/PATH/TO/SAMPLE_3_READS" # this is a directory containing R1 and R2 fastq files
-
+  sample1: "test_input/pipseq_sample_1" # EDIT WITH YOUR DIRECTORY FOR SAMPLE1
+  sample2: "test_input/pipseq_sample_2" # EDIT WITH YOUR DIRECTORY FOR SAMPLE2
+  
 # genome files
 # all single-cell libraries of the previous point will be mapped to this genome
 # remove the 'protein' and 'cds' keys if you don't have them
 genome:
-  fasta: "/PATH/TO/GENOME_ASSEMBLY.FASTA"
-  gtf: "/PATH/TO/GENOME_ANNOTATION.GTF"
-  protein: "/PATH/TO/GENOME_ANNOTATED_PROTEINS.FASTA"
-  cds: "/PATH/TO/GENOME_ANNOTATED_CDSS.FASTA"
-
+  fasta: "test_input/genome/dummy_genome_assembly.fasta" # EDIT WITH YOUR GENOME FASTA
+  gtf: "test_input/genome/dummy_genome_annotation.gtf" # EDIT WITH YOUR GENOME GTF
+  
 # full path to some softwares
 # these softwares need to be run from local executables
 softwares:
