@@ -1,4 +1,4 @@
-# EDIT this config file with to the locations of your files
+# EDIT this config file with the locations of your files
 # DO NOT CHANGE KEYS, but only their values
 
 # Illumina single cell libraries
@@ -6,35 +6,49 @@
 # the specified directory needs to contain files for R1 and R2
 # e.g. path/to/sample_1_reads/R1.fastq.gz, path/to/sample_1_reads/R2.fastq.gz
 libraries:
-  sample_1: "path/to/sample_1_reads" # this is a directory containing R1 and R2 fastq files
-  sample_2: "path/to/sample_2_reads" # this is a directory containing R1 and R2 fastq files
-  sample_3: "path/to/sample_3_reads" # this is a directory containing R1 and R2 fastq files
-
-# specify the PIPseq chemistry
-# default is "V"
-pipseq_chemistry: "V"
+  sample_1: "/PATH/TO/SAMPLE_1_READS" # this is a directory containing R1 and R2 fastq files
+  sample_2: "/PATH/TO/SAMPLE_2_READS" # this is a directory containing R1 and R2 fastq files
+  sample_3: "/PATH/TO/SAMPLE_3_READS" # this is a directory containing R1 and R2 fastq files
 
 # genome files
 # all single-cell libraries of the previous point will be mapped to this genome
 # remove the 'protein' and 'cds' keys if you don't have them
 genome:
-  fasta: "path/to/genome_assembly.fasta"
-  gtf: "path/to/genome_annotation.gtf"
-  protein: "path/to/genome_annotated_proteins.fasta"
-  cds: "path/to/genome_annotated_cdss.fasta"
+  fasta: "/PATH/TO/GENOME_ASSEMBLY.FASTA"
+  gtf: "/PATH/TO/GENOME_ANNOTATION.GTF"
+  protein: "/PATH/TO/GENOME_ANNOTATED_PROTEINS.FASTA"
+  cds: "/PATH/TO/GENOME_ANNOTATED_CDSS.FASTA"
 
 # full path to some softwares
 # these softwares need to be run from local executables
 softwares:
-  geneExt: "/path/to/GeneExt/geneext.py"
-  pipseeker: "/path/to/pipseeker-v3.3.0-linux/pipseeker"
+  geneExt: "/PATH/TO/GeneExt/geneext.py"
+  pipseeker: "/PATH/TO/pipseeker-v3.3.0-linux/pipseeker" 
 
+# specify the PIPseq chemistry
+# one of "v3", "v4", or "V"
+# default is "V"
+pipseq_chemistry: "V"
+
+# specify one or more numbers of cells to be retrieved by pipseeker
+# accepts a single value or a list
+# remove/comment out to skip this step entirely
+force_cells:
+  - "20000"
+  - "18000"
+
+
+#-------------------------------------------------------------------------------------
 
 # DO NOT EDIT any of the following
-# output folders:
+# unless you want to have custom names for folders
+
+# folder names
 genome_ref: "01_genome_ref"
 trimmed_reads: "02_trimmed_reads"
 pipseeker_1st: "03_pipseeker_1st_round"
 geneExt_output: "04_genome_ref_geneExt"
 pipseeker_2nd: "05_pipseker_2nd_round"
+pipseeker_force: "06_pipseeker_forcecells"
+
 log_dir: "logs"

@@ -7,26 +7,34 @@ configfile: "config.yaml"
 
 valid_chemistry = ["v3", "v4", "V"]
 
-#####################
-#     FUNCTIONS     #
-#####################
+
+##########################################
+#     FUNCTIONS TO RUN SAFETY CHECKS     #
+##########################################
 
 def check_config():
     if not isinstance(config.get("libraries"), dict) or not config["libraries"]:
         raise WorkflowError("Please specify a non-empty \"library\" mapping in the config.yaml file.")
-    if not isinstance(config.get("pipseq_chemistry"), str) and config["pipseq_chemistry"] not in valid_chemistry:
+    if config["pipseq_chemistry"] not in valid_chemistry:
         raise WorkflowError("Please specify a valid \"chemistry\" in the config.yaml file. Choose among \"v3\", \"v4\", and \"V\".")
     if not isinstance(config.get("genome"), dict) or not config["genome"]:
         raise WorkflowError("Please specify a non-empty \"genome\" mapping in the config.yaml file.")
     if not isinstance(config.get("softwares"), dict) or not config["softwares"]:
         raise WorkflowError("Please specify a non-empty \"software\" mapping in the config.yaml file.")
+    force_cells = config.get("force_cells", [])
+    if force_cells and not isinstance(force_cells, (str, int, list)):
+        raise WorkflowError("\"force_cells\" must be a single value or a list of values, if present.")
     
 def get_R1(wildcards):
-    files = glob.glob(config["libraries"][wildcards.library] + "/*_R1_001.fastq.gz")
+    files = sorted(glob.glob(config["libraries"][wildcards.library] + "/*_R1_001.fastq.gz"))
+    if len(files) != 1:
+        raise WorkflowError(f"Expected exactly one R1 file for library '{wildcards.library}', found {len(files)}: {files}")
     return files[0]
 
 def get_R2(wildcards):
-    files = glob.glob(config["libraries"][wildcards.library] + "/*_R2_001.fastq.gz")
+    files = sorted(glob.glob(config["libraries"][wildcards.library] + "/*_R2_001.fastq.gz"))
+    if len(files) != 1:
+        raise WorkflowError(f"Expected exactly one R2 file for library '{wildcards.library}', found {len(files)}: {files}")
     return files[0]
 
 
@@ -39,19 +47,43 @@ check_config()
 genome_ref_outdir = config["genome_ref"]
 trimmed_reads_outdir = config["trimmed_reads"]
 pipseeker_1st_outdir = config["pipseeker_1st"]
-geneExt_output_outdire = config["geneExt_output"]
+geneExt_output_outdir = config["geneExt_output"]
 pipseeker_2nd_outdir = config["pipseeker_2nd"]
+pipseeker_force_outdir = config["pipseeker_force"]
 
 log_dir = config["log_dir"]
+
+# turn force_cells to a list of strings; if empty, skip force-cells-related steps
+_force_cells_raw = config.get("force_cells", [])
+if isinstance(_force_cells_raw, (str, int)):
+    force_cells_list = [str(_force_cells_raw)]
+elif isinstance(_force_cells_raw, list):
+    force_cells_list = [str(v) for v in _force_cells_raw]
+else:
+    force_cells_list = []
 
 
 ####################
 #     RULE ALL     #
 ####################
 
+def get_rullAll_inputs():
+    # if force-cell is specified, then use them to list of inputs
+    if force_cells_list:
+        inputs = expand(
+            pipseeker_force_outdir + "/force_{force_cells}/{library}",
+            library = config["libraries"],
+            force_cells = force_cells_list
+        )
+    # else get only pipseeker 2nd round of mapping out dir
+    else:
+        inputs = expand(pipseeker_2nd_outdir + "/{library}", library=config["libraries"])
+    
+    return inputs
+
 rule all:
     input:
-        expand(pipseeker_1st_outdir + "/{library}/star_out.bam", library = config["libraries"])
+        get_rullAll_inputs()
 
 
 ####################################
@@ -81,7 +113,8 @@ rule build_reference_file:
         genome = config["genome"]["fasta"],
         annotation = genome_ref_outdir + "/standardized_agat.gtf"
     output:
-        folder = directory(genome_ref_outdir + "/indexed_genome")
+        folder = directory(genome_ref_outdir + "/indexed_genome"),
+        done_placeholder = touch(genome_ref_outdir + "/.indexed_genome_done") # creating an actual file is safer than only a directory
     log:
         stdout = log_dir + "/02_build_ref.stdout",
         stderr = log_dir + "/02_build_ref.stderr"
@@ -95,6 +128,7 @@ rule build_reference_file:
             --output-path {output.folder} \
             > {log.stdout} 2> {log.stderr}
         """
+
 
 ######################
 #     TRIM READS     #
@@ -126,7 +160,6 @@ rule trim_reads:
 #     MAP READS     #
 #####################
 
-# snakemake --until map_reads --profile ~/.config/snakemake/profiles/slurm_profile.yaml --jobs 3 --rerun-triggers mtime
 rule map_reads:
     input:
         R1 = trimmed_reads_outdir + "/{library}/{library}_R1_001_trimmed.fastq.gz",
@@ -135,8 +168,8 @@ rule map_reads:
     output:
         bam_file = pipseeker_1st_outdir + "/{library}/star_out.bam"
     log:
-        stdout = log_dir + "/{library}/{library}_pipseeker.stdout",
-        stderr = log_dir + "/{library}/{library}_pipseeker.stderr"
+        stdout = log_dir + "/04_{library}_pipseeker.stdout",
+        stderr = log_dir + "/04_{library}_pipseeker.stderr"
     params:
         directory = pipseeker_1st_outdir + "/{library}",
         fastq_dir = trimmed_reads_outdir + "/{library}/{library}",
@@ -151,43 +184,42 @@ rule map_reads:
             --output-path {params.directory} \
             --description {wildcards.library} \
             --retain-barcoded-fastqs \
-            --sorted-bam \
             > {log.stdout} 2> {log.stderr}
         """
 
-'''
+
+# pipseeker has a "--sorted_bam" flag to output sorted bam files, but it doesn't work (unrecognised arguemnt)
 rule sort_bams:
     input:
         unsorted_bam = pipseeker_1st_outdir + "/{library}/star_out.bam"
     output:
         sorted_bam = pipseeker_1st_outdir + "/{library}/star_out_sorted.bam"
     log:
-        stdout = pipseeker_1st_outdir + "/{library}/{library}_samtools_sort.stdout",
-        stderr = pipseeker_1st_outdir + "/{library}/{library}_samtools_sort.stderr"
+        stdout = log_dir + "/05_{library}_samtools_sort.stdout",
+        stderr = log_dir + "/05_{library}_samtools_sort.stderr"
     conda:
         "envs/samtools_env.yaml"
     shell:
         """
-        samtools sort {input.unsorted_bam} -o {output.sorted_bam} \
+        samtools sort -@ {resources.cpus_per_task} {input.unsorted_bam} -o {output.sorted_bam} \
             > {log.stdout} 2> {log.stderr}
         """
 
 rule merge_bams:
     input:
-        sorted_bam = expand("03_pipseeker_1st_round/{library}/star_out_sorted.bam", library=config["libraries"])
+        sorted_bam = expand(pipseeker_1st_outdir + "/{library}/star_out_sorted.bam", library = config["libraries"])
     output:
-        merged_bam = "03_pipseeker_1st_round/merged_bam.bam"
+        merged_bam = pipseeker_1st_outdir + "/merged_bam.bam"
     log:
-        stdout = "03_pipseeker_1st_round/samtools_merge.stdout",
-        stderr = "03_pipseeker_1st_round/samtools_merge.stderr"
+        stdout = log_dir + "/06_samtools_merge.stdout",
+        stderr = log_dir + "/06_samtools_merge.stderr"
     conda:
-        "../envs/samtools_env.yaml"
+        "envs/samtools_env.yaml"
     shell:
         """
         samtools merge {output.merged_bam} {input.sorted_bam} \
             > {log.stdout} 2> {log.stderr}
         """
-
 
 #######################
 #     RUN GENEEXT     #
@@ -195,17 +227,17 @@ rule merge_bams:
 
 rule run_geneExt:
     input:
-        annotation = "01_genome_ref/Ppil_agat.gtf",
-        merged_bam = "03_pipseeker_1st_round/merged_bam.bam"
+        annotation = genome_ref_outdir + "/standardized_agat.gtf",
+        merged_bam = pipseeker_1st_outdir + "/merged_bam.bam"
     output:
-        annotation_geneExt = "04_genome_ref_geneExt/Ppil_agat_geneExt.gtf"
+        annotation_geneExt = geneExt_output_outdir + "/Ppil_agat_geneExt.gtf"
     log:
-        stdout = "04_genome_ref_geneExt/geneExt.stdout",
-        stderr = "04_genome_ref_geneExt/geneExt.stderr"
+        stdout = log_dir + "/07_geneExt.stdout",
+        stderr = log_dir + "/07_geneExt.stderr"
     params:
         geneExt = config["softwares"]["geneExt"]
     conda:
-        "../envs/geneExt_env.yaml"
+        "envs/geneExt_env.yaml"
     shell:
         """
         python {params.geneExt} \
@@ -224,12 +256,12 @@ rule run_geneExt:
 rule build_reference_file_geneExt:
     input:
         genome = config["genome"]["fasta"],
-        annotation = "04_genome_ref_geneExt/Ppil_agat_geneExt.gtf"
+        annotation = geneExt_output_outdir + "/Ppil_agat_geneExt.gtf"
     output:
-        folder = directory("04_genome_ref_geneExt/indexed_genome")
+        folder = directory(geneExt_output_outdir + "/indexed_genome")
     log:
-        stdout = "04_genome_ref_geneExt/build_ref.stdout",
-        stderr = "04_genome_ref_geneExt/build_ref.stderr"
+        stdout = log_dir + "/08_build_ref_geneExt.stdout",
+        stderr = log_dir + "/08_build_ref_geneExt.stderr"
     params:
         pipseeker = config["softwares"]["pipseeker"]
     shell:
@@ -241,24 +273,20 @@ rule build_reference_file_geneExt:
             > {log.stdout} 2> {log.stderr}
         """
 
-# snakemake --until map_reads_geneExt --profile ~/.config/snakemake/profiles/slurm_profile.yaml --jobs 3 --rerun-triggers mtime
 rule map_reads_geneExt:
     input:
-        R1 ="02_trimmed_reads/{library}/{library}_R1_001_trimmed.fastq.gz",
-        R2 = "02_trimmed_reads/{library}/{library}_R2_001_trimmed.fastq.gz",
-        genome_index = "04_genome_ref_geneExt/indexed_genome"
+        R1 = trimmed_reads_outdir + "/{library}/{library}_R1_001_trimmed.fastq.gz",
+        R2 = trimmed_reads_outdir + "/{library}/{library}_R2_001_trimmed.fastq.gz",
+        genome_index = geneExt_output_outdir + "/indexed_genome"
     output:
-        directory = directory("05_pipseeker_2nd_round/{library}")
+        directory = directory(pipseeker_2nd_outdir + "/{library}"),
+        done_placeholder = touch(pipseeker_2nd_outdir + "/.{library}_done") # creating an actual file is safer than only a directory
     log:
-        stdout = "05_pipseeker_2nd_round/{library}/{library}_pipseeker.stdout",
-        stderr = "05_pipseeker_2nd_round/{library}/{library}_pipseeker.stderr"
+        stdout = log_dir + "/09_{library}_pipseeker.stdout",
+        stderr = log_dir + "/09_{library}_pipseeker.stderr"
     params:
-        fastq_dir = "02_trimmed_reads/{library}/{library}",
+        fastq_dir = trimmed_reads_outdir + "/{library}/{library}",
         pipseeker = config["softwares"]["pipseeker"]
-    resources:
-        runtime = 480,
-        mem_mb = 70000,
-        cpus_per_task = 20
     shell:
         """
         {params.pipseeker} full \
@@ -271,29 +299,53 @@ rule map_reads_geneExt:
             > {log.stdout} 2> {log.stderr}
         """
 
-###########################################
-#     FORCE PIPSEEKER CELLS AND MERGE     #
-###########################################
 
-# not run
+#######################################
+#     FORCE PIPSEEKER FORCE CELLS     #
+#######################################
+
 rule force_pipseeker_cells:
     input:
-        previous_run = "05_pipseeker_2nd_round/{library}"
+        previous_run = pipseeker_2nd_outdir + "/{library}"
     output:
-        done = touch("06_pipseeker_merge/.{library}_force_done")
+        # pipseeker cells adds files to the previously computed run in place,
+        # so this placeholder tells snakemake the step has run for this {force_cells} value
+        done_placeholder = touch(pipseeker_force_outdir + "/.{library}_force_{force_cells}_done") 
     log:
-        stdout = "05_pipseeker_2nd_round/{library}/{library}_pipseeker_force.stdout",
-        stderr = "05_pipseeker_2nd_round/{library}/{library}_pipseeker_force.stderr"
+        stdout = log_dir + "/10_{library}_force_{force_cells}_pipseeker_force.stdout",
+        stderr = log_dir + "/10_{library}_force_{force_cells}_pipseeker_force.stderr"
     params:
         pipseeker = config["softwares"]["pipseeker"]
     shell:
         """
         {params.pipseeker} cells \
             --previous {input.previous_run} \
-            --force-cells 20000 \
+            --force-cells {wildcards.force_cells} \
             > {log.stdout} 2> {log.stderr}
         """
 
+# pipseeker's "force_cells" output is missing a trailing \n in barcodes.tsv.gz, so we add it
+rule update_matrices:
+    input:
+        force_done = pipseeker_force_outdir + "/.{library}_force_{force_cells}_done"
+    output:
+        updated_mappings = directory(pipseeker_force_outdir + "/force_{force_cells}/{library}"),
+        done_placeholder = touch(pipseeker_force_outdir + "/force_{force_cells}/.{library}_done") # creating an actual file is safer than only a directory
+    log:
+        stdout = log_dir + "/11_{library}_force_{force_cells}_pipseeker_update_matrices.stdout",
+        stderr = log_dir + "/11_{library}_force_{force_cells}_pipseeker_update_matrices.stderr"
+    params:
+        previous_run = pipseeker_2nd_outdir + "/{library}"
+    shell:
+        """
+        cp -r {params.previous_run}/filtered_matrix/force_{wildcards.force_cells} {output.updated_mappings} &&
+            gunzip {output.updated_mappings}/barcodes.tsv.gz &&
+            echo "" >> {output.updated_mappings}/barcodes.tsv &&
+            gzip {output.updated_mappings}/barcodes.tsv \
+            > {log.stdout} 2> {log.stderr}
+        """
+
+'''
 # not run
 rule merge_pipseeker:
     input:
@@ -315,25 +367,6 @@ rule merge_pipseeker:
             --output-path {output.merged_output} \
             --sample-labels "{params.labels}" \
             --batch {params.labels} \
-            > {log.stdout} 2> {log.stderr}
-        """
-
-# this is because apparently pipseeker "force_cell" output is missing a \n character at the end of barcodes.tsv.gz
-# so we need to add it
-rule update_matrices:
-    input:
-        force_cell = "06_pipseeker_merge/.{library}_force_done"
-    output:
-        updated_mappings = directory("08_input_for_seurat/force_20000/{library}")
-    log:
-        stdout = "08_input_for_seurat/{library}.stdout",
-        stderr = "08_input_for_seurat/{library}.stderr"
-    shell:
-        """
-        cp -r 05_pipseeker_2nd_round/{wildcards.library}/filtered_matrix/force_20000 {output.updated_mappings} &&
-            gunzip {output.updated_mappings}/barcodes.tsv.gz &&
-            echo "" >> {output.updated_mappings}/barcodes.tsv &&
-            gzip {output.updated_mappings}/barcodes.tsv \
             > {log.stdout} 2> {log.stderr}
         """
 '''

@@ -1,13 +1,18 @@
-# EDIT the number of jobs you need to run, as well as your slurm account and extras (if needed)
+# EDIT the values below
 
 executor: slurm
-jobs: 10
+jobs: <NUMBER_OF_JOBS>
 use-conda: true
 
 default-resources:
-  slurm_account: "account"
-  slurm_extra: "--mail-type=BEGIN,END,FAIL --mail-user=your@email.com"
+  slurm_account: "<YOUR_SLURM_ACCOUNT>"
+  slurm_extra: "--mail-type=BEGIN,END,FAIL --mail-user=<YOUR_EMAIL>"
 
+
+#-------------------------------------------------------------------------------------
+
+# DO NOT EDIT the followin
+# unless you want to specify different resources
 set-resources:
   standardize_gtf:
     nodes: 1
@@ -75,4 +80,3 @@ set-resources:
     cpus_per_task: 1
     mem_mb: 20000
     runtime: "1h"
-  
