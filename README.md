@@ -36,3 +36,15 @@ snakemake --rerun-incomplete \
     --configfile config.yaml \
     -s Snakefile
 ```
+
+# Content of this repository
+| File/Directory | Descriprion |
+| --- | --- |
+| [`README.md`](./README.md) | This file. |
+| [`Snakefile`](./Snakefile) | Snakefile with the pipeline. |
+| [`config.yaml`](./config.yaml) | Config files with input files and names of output directories; edit this to set the path to your input files. |
+| [`dag.svg`](./dag.svg) | Graph of this snakemake workflow. |
+| [`envs/`](./envs/) | Directory with necessary conda environments. |
+| [`slurm_profile_config.yaml`](./slurm_profile_config.yaml) | Config file for slurm profile. |
+| [`test_input/`](./test_input/) | Directory with dummy files to test the pipeline. |
+| [`test_run_pipeline.sh`](./test_run_pipeline.sh) | Bash script to run dry run and generate [`dag.svg`](./dag.svg). |
